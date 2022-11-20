@@ -1,0 +1,44 @@
+<html lang="ja">
+
+<head>
+    <title>tmp</title>
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="/public/game.js"></script>
+    <link type="text/css" rel="stylesheet" href="/public/style.css">
+</head>
+
+<body>
+    <div>
+        <main class="Window">
+        </main>
+    </div>
+
+    <script>
+
+        var Width_Window = 600;
+        var Height_Window = 600;
+
+        function setup() 
+        {
+            createCanvas(Width_Window, Height_Window);
+
+            background(255);
+        }
+
+        Socket.on("state", (_Players) => 
+        {
+            background(255);
+
+            for(var i1 in _Players) 
+            {
+                text(_Players[i1].Name + "#" + _Players[i1].ID, _Players[i1].X + 15, _Players[i1].Y - 15);
+                ellipse(_Players[i1].X, _Players[i1].Y, 30, 30);
+            }
+        });
+    </script>
+</body>
+
+</html>
