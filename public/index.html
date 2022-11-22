@@ -6,38 +6,37 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
     <script type="text/javascript" src="/socket.io/socket.io.js"></script>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script src="/public/game.js"></script>
+    <script type="text/javascript" src="/public/game.js"></script>
     <link type="text/css" rel="stylesheet" href="/public/style.css">
 </head>
 
 <body>
-    <div>
-        <main class="Window">
+    <div class="Title">
+        <h1>・tmp・</h1>
+        <p>2022/11/04</p>
+    </div>
+
+    <hr>
+
+    <div class="Content1" style="margin-top:32px;">
+        <div class="Content2" style="margin-top:16px;">
+            <strong>Player Name: </strong>
+            <input class="InputText" id="PlayerName" type="text" id="PlayerName">
+            <input class="Button" type="button" value="Change" onclick="Change_PlayerName()">
+        </div>
+        <br>
+        <div class="Content2" style="margin-top:16px;">
+            <strong>Room Name: </strong>
+            <input class="InputText" id="RoomName" type="text" id="RoomName">
+            <input class="Button" type="button" value="Join" onclick="Change_RoomName()">
+        </div>
+    </div>
+
+    <div class="Content1" style="margin-top:32px;">
+        <main class="Window" name="Window" id="Window">
         </main>
     </div>
 
-    <script>
-
-        var Width_Window = 600;
-        var Height_Window = 600;
-
-        function setup() 
-        {
-            createCanvas(Width_Window, Height_Window);
-
-            background(255);
-        }
-
-        Socket.on("state", (_Players) => 
-        {
-            background(255);
-
-            for(var i1 in _Players) 
-            {
-                text(_Players[i1].Name + "#" + _Players[i1].ID, _Players[i1].X + 15, _Players[i1].Y - 15);
-                ellipse(_Players[i1].X, _Players[i1].Y, 30, 30);
-            }
-        });
     </script>
 </body>
 
