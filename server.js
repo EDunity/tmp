@@ -10,52 +10,40 @@ var IO = _SocketIO(Server);
 var Port = process.env.PORT || 3000;
 var FrameRate = 60;
 
-var Width_Window = 600;
+var Width_Window = 800;
 var Height_Window = 600;
 
-class Vector2
-{
-    constructor(x = 0, y = 0)
-    {
-        this.x = x;
-        this.y = y;
-    }
-};
-
-class Player
-{
-    constructor()
-    {
-        this.ID = -1;
-        this.PlayerName = "NoName";
-        this.RoomName = "Lobby";
-        this.Radius = 30;
-        this.Position = new Vector2((Width_Window - this.Radius), (Height_Window - this.Radius));
-        this.Movement = {};
-    }
-};
-
-function Clamp(num, min, max)
-{
-    return Math.min(Math.max(num, min), max);
-}
-
 var Players = {};
+var Rooms = {};
+
+function Clamp(_Num, _Min, _Max)
+{
+    return Math.min(Math.max(_Num, _Min), _Max);
+}
 
 //クライアントが接続した時に呼ばれる関数
 IO.on("connection", function(_Socket) 
 {
     var Player_ = null;
 
-    _Socket.on("GameStart", function(_ID) 
+    _Socket.on("Connect_Game", function(_Player) 
     {
-        Player_ = new Player();
-
-        Player_.ID = _ID;
+        Player_ = _Player;
 
         Players[Player_.ID] = Player_;
 
         _Socket.join(Players[Player_.ID].RoomName);
+
+        if(Rooms[Players[Player_.ID].RoomName] == undefined)
+        {
+            Rooms[Players[Player_.ID].RoomName] = 1;
+        }
+        else
+        {
+            Rooms[Players[Player_.ID].RoomName] += 1;
+        }
+
+        Debug_Rooms();
     });
 
     _Socket.on("Change_PlayerName", function(_PlayerName) 
@@ -63,15 +51,33 @@ IO.on("connection", function(_Socket)
         Players[Player_.ID].PlayerName = _PlayerName;
     });
 
-    _Socket.on("Change_RoomName", function(_RoomName) 
+    _Socket.on("Join_RoomName", function(_RoomName) 
     {
+        Rooms[Players[Player_.ID].RoomName] -= 1;
+
+        if(Rooms[Players[Player_.ID].RoomName] == 0)
+        {
+            delete Rooms[Players[Player_.ID].RoomName];
+        }
+
         _Socket.leave(Players[Player_.ID].RoomName);
 
         _Socket.join(_RoomName);
         Players[Player_.ID].RoomName = _RoomName;
+
+        if(Rooms[_RoomName] == undefined)
+        {
+            Rooms[_RoomName] = 1;
+        }
+        else
+        {
+            Rooms[_RoomName] += 1;
+        }
+
+        Debug_Rooms();
     });
 
-    _Socket.on("Movement", function(_Movement) 
+    _Socket.on("Move_Player", function(_Movement) 
     {
         if(Player_ != null)
         {
@@ -83,11 +89,38 @@ IO.on("connection", function(_Socket)
     {
         if(Player_ != null)
         {
+            Rooms[Players[Player_.ID].RoomName] -= 1;
+
+            if(Rooms[Player_.RoomName] == 0)
+            {
+                delete Rooms[Player_.RoomName];
+            }
+
             delete Players[Player_.ID];
 
             Player_ = null;
+
+            Debug_Rooms();
         }
     });
+
+    function Debug_Players()
+    {
+        console.log("---------- Players ----------");
+        for(var i1 in Players) 
+        {
+            console.log(i1 + ": " + Players[i1]);
+        }
+    }
+
+    function Debug_Rooms()
+    {
+        console.log("---------- Rooms ----------");
+        for(var i1 in Rooms) 
+        {
+            console.log(i1 + ": " + Rooms[i1]);
+        }
+    }
 });
 
 //1秒にFrameRate回呼ばれる関数
@@ -116,7 +149,7 @@ setInterval(function()
         Players[i1].Position.y = Clamp(Players[i1].Position.y, 0, Height_Window);
     }
 
-    IO.sockets.emit("Update", Players);
+    IO.sockets.emit("Update", Players, Rooms);
 
 }, 1000 / FrameRate);
 

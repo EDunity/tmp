@@ -1,6 +1,6 @@
 var Socket = io();
 
-var Width_Window = 600;
+var Width_Window = 800;
 var Height_Window = 600;
 
 class Vector2
@@ -20,12 +20,14 @@ class Player
         this.PlayerName = "NoName";
         this.RoomName = "Lobby";
         this.Radius = 30;
-        this.Position = new Vector2((Width_Window - this.Radius), (Height_Window - this.Radius));
+        this.Position = new Vector2(-1, -1);
         this.Movement = {};
     }
 }
 
 var Player_ = new Player();
+
+var Count_PlayersInRoom = 0;
 
 function setup()
 {
@@ -34,24 +36,25 @@ function setup()
     background(255);
 }
 
-//ゲーム開始時にGameStart関数を呼ぶ。
-Socket.on("connect", GameStart);
+//ゲーム開始時にConnect_Game関数を呼ぶ。
+Socket.on("connect", Connect_Game);
 
-function GameStart()
+function Connect_Game()
 {
     Player_.ID = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+    Player_.Position = new Vector2(Math.random() * (Width_Window - Player_.Radius), Math.random() * (Height_Window - Player_.Radius));
 
-    Socket.emit("GameStart", Player_.ID);
+    Socket.emit("Connect_Game", Player_);
 }
 
 $(document).on("keydown keyup", (_Event) => 
 {
     var KeyToCommand = 
     {
-        "ArrowUp": "forward",
-        "ArrowDown": "back",
-        "ArrowRight": "right",
-        "ArrowLeft": "left",
+        "w": "forward",
+        "s": "back",
+        "d": "right",
+        "a": "left",
     };
 
     var Command = KeyToCommand[_Event.key];
@@ -67,17 +70,13 @@ $(document).on("keydown keyup", (_Event) =>
             Player_.Movement[Command] = false;
         }
 
-        Socket.emit("Movement", Player_.Movement);
+        Socket.emit("Move_Player", Player_.Movement);
     }
 });
 
-Socket.on("Update", function(_Players) 
+Socket.on("Update", function(_Players, _Rooms) 
 {
     background(255);
-
-    textSize(25);
-
-    text("RN: " + Player_.RoomName, 5, 25);
 
     textSize(12);
 
@@ -94,18 +93,20 @@ Socket.on("Update", function(_Players)
                 fill(0, 0, 255);
             }
 
-            text("ID: " + _Players[i1].ID, _Players[i1].Position.x + 15, _Players[i1].Position.y - 45);
-            text("PN: " + _Players[i1].PlayerName, _Players[i1].Position.x + 15, _Players[i1].Position.y - 30);
-            text("RN: " + _Players[i1].RoomName, _Players[i1].Position.x + 15, _Players[i1].Position.y - 15);
             circle(_Players[i1].Position.x, _Players[i1].Position.y , _Players[i1].Radius);
+            text("ID: " + _Players[i1].ID, _Players[i1].Position.x + 15, _Players[i1].Position.y - 12 * 3);
+            text("PN: " + _Players[i1].PlayerName, _Players[i1].Position.x + 15, _Players[i1].Position.y - 12 * 2);
+            text("RN: " + _Players[i1].RoomName, _Players[i1].Position.x + 15, _Players[i1].Position.y - 12 * 1);
         }
     }
-});
 
-// Socket.on("tmp", function() 
-// {
-//     console.log("yes");
-// });
+    textSize(25);
+    fill(0);
+    text("RN: " + Player_.RoomName, 5, 25 * 1);
+    text("PC: " + _Rooms[Player_.RoomName], 5, 25 * 2);
+
+    Count_PlayersInRoom = _Rooms[Player_.RoomName];
+});
 
 function Change_PlayerName()
 {
@@ -116,11 +117,32 @@ function Change_PlayerName()
     Socket.emit("Change_PlayerName", PlayerName);
 }
 
-function Change_RoomName()
+function Join_RoomName()
 {
     var RoomName = document.getElementById("RoomName").value;
 
     Player_.RoomName = RoomName;
 
-    Socket.emit("Change_RoomName", RoomName);
+    Socket.emit("Join_RoomName", RoomName);
+
+    if(RoomName == "Lobby")
+    {
+        document.getElementById("Visible").style.visibility = "hidden";
+    }
+    else
+    {
+        document.getElementById("Visible").style.visibility = "visible";
+    }
+}
+
+function Start_Game()
+{
+    if(Count_PlayersInRoom >= 2)
+    {
+
+    }
+    else
+    {
+        
+    }
 }
