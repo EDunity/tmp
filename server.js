@@ -10,7 +10,7 @@ var IO = _SocketIO(Server);
 var Port = process.env.PORT || 3000;
 var FrameRate = 60;
 
-var Width_Window = 800;
+var Width_Window = 1000;
 var Height_Window = 600;
 
 var Players = {};
@@ -85,6 +85,16 @@ IO.on("connection", function(_Socket)
         }
     });
 
+    _Socket.on("Start_Game", function(_RoomName) 
+    {
+        IO.to(_RoomName).emit("tmp1"); 
+    });
+
+    _Socket.on("End_Game", function(_RoomName) 
+    {
+        IO.to(_RoomName).emit("tmp2"); 
+    });
+
     _Socket.on("disconnect", () => 
     {
         if(Player_ != null)
@@ -130,26 +140,26 @@ setInterval(function()
     {
         if(Players[i1].Movement.forward)
         {
-            Players[i1].Position.y -= 5;
+            Players[i1].Position.y -= Players[i1].Speed;
         }
         if(Players[i1].Movement.back)
         {
-            Players[i1].Position.y += 5;
+            Players[i1].Position.y += Players[i1].Speed;
         }
         if(Players[i1].Movement.right)
         {
-            Players[i1].Position.x += 5;
+            Players[i1].Position.x += Players[i1].Speed;
         }
         if(Players[i1].Movement.left)
         {
-            Players[i1].Position.x -= 5;
+            Players[i1].Position.x -= Players[i1].Speed;
         }
 
         Players[i1].Position.x = Clamp(Players[i1].Position.x, 0, Width_Window);
         Players[i1].Position.y = Clamp(Players[i1].Position.y, 0, Height_Window);
     }
 
-    IO.sockets.emit("Update", Players, Rooms);
+    IO.emit("Update", Players, Rooms);
 
 }, 1000 / FrameRate);
 

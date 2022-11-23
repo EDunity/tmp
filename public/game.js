@@ -1,7 +1,15 @@
 var Socket = io();
 
-var Width_Window = 800;
+var Width_Window = 1000;
 var Height_Window = 600;
+
+var KeyToCommand = 
+{
+    "w": "forward",
+    "s": "back",
+    "d": "right",
+    "a": "left",
+};
 
 class Vector2
 {
@@ -16,11 +24,13 @@ class Player
 {
     constructor()
     {
-        this.ID = -1;
+        this.ID = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
         this.PlayerName = "NoName";
         this.RoomName = "Lobby";
+        this.State = false;
         this.Radius = 30;
-        this.Position = new Vector2(-1, -1);
+        this.Speed = 5;
+        this.Position = new Vector2(Width_Window / 2, Height_Window / 2);
         this.Movement = {};
     }
 }
@@ -41,71 +51,72 @@ Socket.on("connect", Connect_Game);
 
 function Connect_Game()
 {
-    Player_.ID = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-    Player_.Position = new Vector2(Math.random() * (Width_Window - Player_.Radius), Math.random() * (Height_Window - Player_.Radius));
-
     Socket.emit("Connect_Game", Player_);
 }
 
-$(document).on("keydown keyup", (_Event) => 
+Socket.on("Update", function(_Players, _Rooms) 
 {
-    var KeyToCommand = 
+    if(!Player_.State)
     {
-        "w": "forward",
-        "s": "back",
-        "d": "right",
-        "a": "left",
-    };
+        background(255);
 
-    var Command = KeyToCommand[_Event.key];
+        textSize(12);
 
-    if(Command)
+        for(var i1 in _Players) 
+        {
+            if(_Players[i1].RoomName == Player_.RoomName)
+            {
+                if(_Players[i1].ID == Player_.ID)
+                {
+                    fill(255, 0, 0);
+                }
+                else
+                {
+                    fill(0, 0, 255);
+                }
+
+                circle(_Players[i1].Position.x, _Players[i1].Position.y , _Players[i1].Radius);
+                text("ID: " + _Players[i1].ID, _Players[i1].Position.x + 15, _Players[i1].Position.y - 12 * 3);
+                text("PN: " + _Players[i1].PlayerName, _Players[i1].Position.x + 15, _Players[i1].Position.y - 12 * 2);
+                text("RN: " + _Players[i1].RoomName, _Players[i1].Position.x + 15, _Players[i1].Position.y - 12 * 1);
+            }
+        }
+
+        textSize(25);
+        fill(0);
+        text("RN: " + Player_.RoomName, 5, 25 * 1);
+        text("PC: " + _Rooms[Player_.RoomName], 5, 25 * 2);
+
+        Count_PlayersInRoom = _Rooms[Player_.RoomName];
+    }
+    else
     {
-        if(_Event.type === "keydown")
-        {
-            Player_.Movement[Command] = true;
-        }
-        else if(_Event.type === "keyup")
-        {
-            Player_.Movement[Command] = false;
-        }
-
-        Socket.emit("Move_Player", Player_.Movement);
+        background(255);
     }
 });
 
-Socket.on("Update", function(_Players, _Rooms) 
+$(document).on("keydown keyup", (_Event) => 
 {
-    background(255);
-
-    textSize(12);
-
-    for(var i1 in _Players) 
+    if(!Player_.State)
     {
-        if(_Players[i1].RoomName == Player_.RoomName)
+        if(KeyToCommand[_Event.key] != undefined)
         {
-            if(_Players[i1].ID == Player_.ID)
+            if(_Event.type === "keydown")
             {
-                fill(255, 0, 0);
+                Player_.Movement[KeyToCommand[_Event.key]] = true;
             }
-            else
+            else if(_Event.type === "keyup")
             {
-                fill(0, 0, 255);
+                Player_.Movement[KeyToCommand[_Event.key]] = false;
             }
 
-            circle(_Players[i1].Position.x, _Players[i1].Position.y , _Players[i1].Radius);
-            text("ID: " + _Players[i1].ID, _Players[i1].Position.x + 15, _Players[i1].Position.y - 12 * 3);
-            text("PN: " + _Players[i1].PlayerName, _Players[i1].Position.x + 15, _Players[i1].Position.y - 12 * 2);
-            text("RN: " + _Players[i1].RoomName, _Players[i1].Position.x + 15, _Players[i1].Position.y - 12 * 1);
+            Socket.emit("Move_Player", Player_.Movement);
         }
     }
+    else
+    {
 
-    textSize(25);
-    fill(0);
-    text("RN: " + Player_.RoomName, 5, 25 * 1);
-    text("PC: " + _Rooms[Player_.RoomName], 5, 25 * 2);
-
-    Count_PlayersInRoom = _Rooms[Player_.RoomName];
+    }
 });
 
 function Change_PlayerName()
@@ -139,10 +150,20 @@ function Start_Game()
 {
     if(Count_PlayersInRoom >= 2)
     {
-
+        Socket.emit("Start_Game", Player_.RoomName);
     }
     else
     {
         
     }
 }
+
+Socket.on("tmp1", function() 
+{
+    Player_.State = true;
+});
+
+Socket.on("tmp2", function() 
+{
+    Player_.State = false;
+});
