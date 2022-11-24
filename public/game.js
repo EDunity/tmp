@@ -20,8 +20,6 @@ var KeyToCommand =
 function setup()
 {
     createCanvas(Width_Window, Height_Window);
-
-    background(255);
 }
 
 //ゲーム開始時にConnect_Game関数を呼ぶ。
@@ -34,26 +32,11 @@ function Connect_Game()
 
 Socket.on("Update", function(_Players, _Rooms) 
 {
-    Player_ = _Players[ID];
-
-    if(Player_.RoomName == null)
+    if(_Players[ID] != undefined)
     {
-        Room_ = null;
-    }
-    else
-    {
+        Player_ = _Players[ID];
         Room_ = _Rooms[Player_.RoomName];
-    }
 
-
-
-
-
-
-    // Room_ = _Rooms[Player_.RoomName] == undefined ? null : _Rooms[Player_.RoomName];
-
-    if(_Players != null && _Rooms != null)
-    {
         if(!Room_.State)
         {
             background(255);
@@ -75,17 +58,21 @@ Socket.on("Update", function(_Players, _Rooms)
                         fill(0, 0, 255);
                     }
 
+                    stroke(0);
+                    strokeWeight(4);
                     circle(Player.Position.X, Player.Position.Y , Player.Radius);
+
+                    stroke(0);
+                    noStroke();
                     text("ID: " + Player.ID, Player.Position.X + 15, Player.Position.Y - 12 * 3);
-                    text("PN: " + Player.PlayerName, Player.Position.X + 15, Player.Position.Y - 12 * 2);
-                    text("RN: " + Player.RoomName, Player.Position.X + 15, Player.Position.Y - 12 * 1);
+                    text("Name: " + Player.PlayerName, Player.Position.X + 15, Player.Position.Y - 12 * 2);
                 }
             }
 
             textSize(25);
             fill(0);
-            text("RN: " + Player_.RoomName, 5, 25 * 1);
-            text("PC: " + Room_.Members.length, 5, 25 * 2);
+            text("Room: " + Player_.RoomName, 5, 25 * 1);
+            text("Population: " + Room_.Members.length, 5, 25 * 2);
         }
         else
         {
