@@ -13,6 +13,39 @@ var FrameRate = 60;
 var Width_Window = 1000;
 var Height_Window = 600;
 
+class Vector2
+{
+    constructor(_X = 0, _Y = 0)
+    {
+        this.X = _X;
+        this.Y = _Y;
+    }
+};
+
+class Player
+{
+    constructor(_ID)
+    {
+        this.ID = _ID;
+        this.PlayerName = "NoName";
+        this.RoomName = "Lobby";
+        this.Radius = 30;
+        this.Speed = 5;
+        this.Position = new Vector2(Width_Window / 2, Height_Window / 2);
+        this.Movement = {};
+    }
+}
+
+class Room
+{
+    constructor(_RoomName = "Lobby")
+    {
+        this.RoomName = _RoomName;
+        this.Members = [];
+        this.State = false;
+    }
+}
+
 var Players = {};
 var Rooms = {};
 
@@ -26,60 +59,71 @@ IO.on("connection", function(_Socket)
 {
     var Player_ = null;
 
-    _Socket.on("Connect_Game", function(_Player) 
+    _Socket.on("Connect_Game", function(_ID) 
     {
-        Player_ = _Player;
-
-        Players[Player_.ID] = Player_;
-
-        _Socket.join(Players[Player_.ID].RoomName);
-
-        if(Rooms[Players[Player_.ID].RoomName] == undefined)
+        // if(_ID != null)
+        if(true)
         {
-            Rooms[Players[Player_.ID].RoomName] = 1;
-        }
-        else
-        {
-            Rooms[Players[Player_.ID].RoomName] += 1;
-        }
+            Player_ = new Player(_ID);
 
-        Debug_Rooms();
+            Players[Player_.ID] = Player_;
+
+            if(!(Player_.RoomName in Rooms))
+            {
+                Rooms[Player_.RoomName] = new Room(Player_.RoomName);
+            }
+
+            Rooms[Player_.RoomName].Members.push(Player_);
+
+            _Socket.join(Player_.RoomName);
+
+            Debug_Rooms();
+        }
     });
 
     _Socket.on("Change_PlayerName", function(_PlayerName) 
     {
-        Players[Player_.ID].PlayerName = _PlayerName;
+        // if(_PlayerName != null)
+        if(true)
+        {
+            Players[Player_.ID].PlayerName = _PlayerName;
+        }
     });
 
     _Socket.on("Join_RoomName", function(_RoomName) 
     {
-        Rooms[Players[Player_.ID].RoomName] -= 1;
-
-        if(Rooms[Players[Player_.ID].RoomName] == 0)
+        // if(_RoomName != null)
+        if(true)
         {
-            delete Rooms[Players[Player_.ID].RoomName];
+            var Index = Rooms[Player_.RoomName].Members.indexOf(Player_);
+            Rooms[Player_.RoomName].Members.splice(Index, 1);
+
+            if(Rooms[Player_.RoomName].Members.length == 0)
+            {
+                delete Rooms[Player_.RoomName];
+            }
+
+            _Socket.leave(Player_.RoomName);
+
+            _Socket.join(_RoomName);
+
+            Players[Player_.ID].RoomName = _RoomName;
+
+            if(!(_RoomName in Rooms))
+            {
+                Rooms[_RoomName] = new Room(_RoomName);
+            }
+
+            Rooms[_RoomName].Members.push(Player_);
+
+            Debug_Rooms();
         }
-
-        _Socket.leave(Players[Player_.ID].RoomName);
-
-        _Socket.join(_RoomName);
-        Players[Player_.ID].RoomName = _RoomName;
-
-        if(Rooms[_RoomName] == undefined)
-        {
-            Rooms[_RoomName] = 1;
-        }
-        else
-        {
-            Rooms[_RoomName] += 1;
-        }
-
-        Debug_Rooms();
     });
 
     _Socket.on("Move_Player", function(_Movement) 
     {
-        if(Player_ != null)
+        // if(_Movement != null)
+        if(true)
         {
             Player_.Movement = _Movement;
         }
@@ -87,31 +131,36 @@ IO.on("connection", function(_Socket)
 
     _Socket.on("Start_Game", function(_RoomName) 
     {
-        IO.to(_RoomName).emit("tmp1"); 
+        // if(_RoomName != null)
+        if(true)
+        {
+            if(!Rooms[_RoomName].State && Rooms[_RoomName].Members.length >= 2)
+            {
+                Rooms[_RoomName].State = true;
+            }
+        }
     });
 
     _Socket.on("End_Game", function(_RoomName) 
     {
-        IO.to(_RoomName).emit("tmp2"); 
+        // if(_RoomName != null)
+        if(true)
+        {
+
+        }
     });
 
-    _Socket.on("disconnect", () => 
+    _Socket.on("disconnect", function()
     {
-        if(Player_ != null)
+        var Index = Rooms[Player_.RoomName].Members.indexOf(Player_);
+        Rooms[Player_.RoomName].Members.splice(Index, 1);
+
+        if(Rooms[Player_.RoomName].Members.length == 0)
         {
-            Rooms[Players[Player_.ID].RoomName] -= 1;
-
-            if(Rooms[Player_.RoomName] == 0)
-            {
-                delete Rooms[Player_.RoomName];
-            }
-
-            delete Players[Player_.ID];
-
-            Player_ = null;
-
-            Debug_Rooms();
+            delete Rooms[Player_.RoomName];
         }
+
+        delete Players[Player_.ID];
     });
 
     function Debug_Players()
@@ -122,15 +171,26 @@ IO.on("connection", function(_Socket)
             console.log(i1 + ": " + Players[i1]);
         }
     }
-
     function Debug_Rooms()
     {
         console.log("---------- Rooms ----------");
         for(var i1 in Rooms) 
         {
-            console.log(i1 + ": " + Rooms[i1]);
+            console.log(Rooms[i1].RoomName + ": ");
+
+            for(var i2 in Rooms[i1].Members)
+            {
+                console.log("  " + i2 + ": " + Rooms[i1].Members[i2].PlayerName);
+            }
         }
     }
+    
+    //1秒にFrameRate回呼ばれる関数
+    // setInterval(function() 
+    // {
+    //     IO.emit("Update", Players, Rooms);
+
+    // }, 1000 / FrameRate);
 });
 
 //1秒にFrameRate回呼ばれる関数
@@ -140,23 +200,23 @@ setInterval(function()
     {
         if(Players[i1].Movement.forward)
         {
-            Players[i1].Position.y -= Players[i1].Speed;
+            Players[i1].Position.Y -= Players[i1].Speed;
         }
         if(Players[i1].Movement.back)
         {
-            Players[i1].Position.y += Players[i1].Speed;
+            Players[i1].Position.Y += Players[i1].Speed;
         }
         if(Players[i1].Movement.right)
         {
-            Players[i1].Position.x += Players[i1].Speed;
+            Players[i1].Position.X += Players[i1].Speed;
         }
         if(Players[i1].Movement.left)
         {
-            Players[i1].Position.x -= Players[i1].Speed;
+            Players[i1].Position.X -= Players[i1].Speed;
         }
 
-        Players[i1].Position.x = Clamp(Players[i1].Position.x, 0, Width_Window);
-        Players[i1].Position.y = Clamp(Players[i1].Position.y, 0, Height_Window);
+        Players[i1].Position.X = Clamp(Players[i1].Position.X, 0, Width_Window);
+        Players[i1].Position.Y = Clamp(Players[i1].Position.Y, 0, Height_Window);
     }
 
     IO.emit("Update", Players, Rooms);
