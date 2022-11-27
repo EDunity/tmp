@@ -1,17 +1,17 @@
 var Express = require("express");//Webアプリを開発するためのフレームワーク
 var Http = require("http");//サーバを構築する上で必要な機能を提供するモジュール
 var Path = require("path");//ファイル名、ディレクトリ名、拡張子などのパス操作ができるモジュール
-var _SocketIO = require("socket.io");//リアルタイム双方向通信をサポートしてくれるライブラリ
+var SocketIO = require("socket.io");//リアルタイム双方向通信をサポートしてくれるライブラリ
 
 var App = Express();
 var Server = Http.createServer(App);
-var IO = _SocketIO(Server);
+var IO = SocketIO(Server);
 
 var Port = process.env.PORT || 3000;
 var FrameRate = 60;
 
-var Width_Window = 1000;
-var Height_Window = 600;
+var Width_Window = 1024;
+var Height_Window = 768;
 
 class Vector2
 {
@@ -28,9 +28,10 @@ class Player
     {
         this.PlayerID = "";
         this.PlayerName = "NoName";
+        this.Position = new Vector2(Width_Window / 2, Height_Window / 2);
+        this.Health = 100;
         this.Radius = 30;
         this.Speed = 5;
-        this.Position = new Vector2(Width_Window / 2, Height_Window / 2);
         this.Movement = {};
         this.Hand = [];
 
@@ -44,6 +45,9 @@ class Room
     {
         this.RoomName = "Lobby";
         this.Members = [];
+        this.Order = [];
+        this.Turn = "";
+        this.Type = "";
         this.State = "Wait";
     }
 }
@@ -51,9 +55,24 @@ class Room
 var Players = {};
 var Rooms = {};
 
-function Clamp(_Num, _Min, _Max)
+function Clamp_Value(_Value, _Min, _Max)
 {
-    return Math.min(Math.max(_Num, _Min), _Max);
+    return Math.min(Math.max(_Value, _Min), _Max);
+}
+
+function Get_ShuffledArray(_Array)
+{
+    var Array_ = [];
+
+    while(_Array.length > 0) 
+    {
+      var i1 = Math.floor(Math.random() * _Array.length);
+    
+      Array_.push(_Array[i1]);
+      _Array.splice(i1, 1);
+    }
+
+    return Array_;
 }
 
 //クライアントが接続した時に呼ばれる関数
@@ -75,7 +94,7 @@ IO.on("connection", function(_Socket)
 
         Rooms[Player_.RoomName].Members.push(Player_.PlayerID);
 
-        // _Socket.join(Player_.RoomName);
+        _Socket.join(Player_.RoomName);
 
         IO.to(_Socket.id).emit("ID", Player_.PlayerID);
 
@@ -98,9 +117,9 @@ IO.on("connection", function(_Socket)
             delete Rooms[Player_.RoomName];
         }
 
-        // _Socket.leave(Player_.RoomName);
+        _Socket.leave(Player_.RoomName);
 
-        // _Socket.join(_RoomName);
+        _Socket.join(_RoomName);
 
         Players[Player_.PlayerID].RoomName = _RoomName;
 
@@ -133,9 +152,37 @@ IO.on("connection", function(_Socket)
         {
             if(Rooms[_RoomName].State == "Wait" && Rooms[_RoomName].Members.length >= 2)
             {
+                Rooms[_RoomName].Order = Get_ShuffledArray(Rooms[_RoomName].Members.slice());
+
+                Rooms[_RoomName].Turn = Rooms[_RoomName].Order[0];
+
+                Rooms[_RoomName].Type = "Attack";
+
                 Rooms[_RoomName].State = "Prepare";
+
+                IO.to(_RoomName).emit("Impulse", Players, Rooms);
             }
         }
+        else if(_State == "Play")
+        {
+            if(Rooms[_RoomName].State == "Prepare")
+            {
+                Rooms[_RoomName].State = "Play";
+                
+                IO.to(_RoomName).emit("Impulse", Players, Rooms);
+            }
+        }   
+    });
+
+    _Socket.on("Next_Turn", function(_RoomName, _Type) 
+    {
+        var Index = Rooms[_RoomName].Order.indexOf(Rooms[_RoomName].Turn);
+
+        Rooms[_RoomName].Turn = Rooms[_RoomName].Order[(Index + 1) % Rooms[_RoomName].Members.length];
+
+        Rooms[_RoomName].Type = _Type;
+
+        IO.to(_RoomName).emit("Impulse", Players, Rooms);
     });
 
     _Socket.on("disconnect", function()
@@ -196,8 +243,8 @@ setInterval(function()
             Players[i1].Position.X -= Players[i1].Speed;
         }
 
-        Players[i1].Position.X = Clamp(Players[i1].Position.X, 0, Width_Window);
-        Players[i1].Position.Y = Clamp(Players[i1].Position.Y, 0, Height_Window);
+        Players[i1].Position.X = Clamp_Value(Players[i1].Position.X, 0, Width_Window);
+        Players[i1].Position.Y = Clamp_Value(Players[i1].Position.Y, 0, Height_Window);
     }
 
     IO.emit("Update", Players, Rooms);
