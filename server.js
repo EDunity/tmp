@@ -1,41 +1,18 @@
-var Express = require("express");//Webアプリを開発するためのフレームワーク
-var Http = require("http");//サーバを構築する上で必要な機能を提供するモジュール
-var Path = require("path");//ファイル名、ディレクトリ名、拡張子などのパス操作ができるモジュール
-var SocketIO = require("socket.io");//リアルタイム双方向通信をサポートしてくれるライブラリ
-
-var App = Express();
-var Server = Http.createServer(App);
-var IO = SocketIO(Server);
-
-var Port = process.env.PORT || 3000;
-var FrameRate = 60;
-
-var Width_Window = 1024;
-var Height_Window = 768;
-
-class Vector2
-{
-    constructor(_X = 0, _Y = 0)
-    {
-        this.X = _X;
-        this.Y = _Y;
-    }
-};
-
 class Player
 {
     constructor()
     {
-        this.PlayerID = "";
-        this.PlayerName = "NoName";
-        this.Position = new Vector2(Width_Window / 2, Height_Window / 2);
-        this.Health = 100;
-        this.Radius = 30;
-        this.Speed = 5;
-        this.Movement = {};
+        this.SocketID = "";
+        this.PlayerName = "";
+        this.State = ""
+        this.Team = "";
+        this.Index = -1;
         this.Hand = [];
+        this.Health = -1;
+        this.Shield = -1;
+        this.Ammo = -1;
 
-        this.RoomName = "Lobby";
+        this.RoomName = "";
     }
 }
 
@@ -43,225 +20,275 @@ class Room
 {
     constructor()
     {
-        this.RoomName = "Lobby";
-        this.Members = [];
+        this.RoomName = "";
+        this.Players = [];
         this.Order = [];
-        this.Turn = "";
+        this.Side = "";
+        this.Turn = -1;
+        this.Target = -1;
+        this.Value = -1;
         this.Type = "";
-        this.State = "Wait";
     }
 }
+
+
+var Express = require("express");
+var Http = require("http");
+var Path = require("path");
+var SocketIO = require("socket.io");
+
+var App = Express();
+var Server = Http.createServer(App);
+var IO = SocketIO(Server);
+
+var Port = process.env.PORT || 3000;
 
 var Players = {};
 var Rooms = {};
 
-function Clamp_Value(_Value, _Min, _Max)
-{
-    return Math.min(Math.max(_Value, _Min), _Max);
-}
-
-function Get_ShuffledArray(_Array)
-{
-    var Array_ = [];
-
-    while(_Array.length > 0) 
-    {
-      var i1 = Math.floor(Math.random() * _Array.length);
-    
-      Array_.push(_Array[i1]);
-      _Array.splice(i1, 1);
-    }
-
-    return Array_;
-}
-
-//クライアントが接続した時に呼ばれる関数
 IO.on("connection", function(_Socket) 
 {
-    var Player_ = null;
-
     _Socket.on("Connect_Game", function() 
     {
-        Player_ = new Player();
-        Player_.PlayerID = _Socket.id;
+        Players[_Socket.id] = new Player();
+        Players[_Socket.id].SocketID = _Socket.id;
+        Players[_Socket.id].PlayerName = "Player#" + _Socket.id;
+        Players[_Socket.id].State = "Title";
 
-        Players[Player_.PlayerID] = Player_;
+        IO.emit("Update_Info", Players, Rooms);
 
-        if(!(Player_.RoomName in Rooms))
-        {
-            Rooms[Player_.RoomName] = new Room();
-        }
-
-        Rooms[Player_.RoomName].Members.push(Player_.PlayerID);
-
-        _Socket.join(Player_.RoomName);
-
-        IO.to(_Socket.id).emit("ID", Player_.PlayerID);
+        IO.to(_Socket.id).emit("Change_SocketID", _Socket.id);
 
         Debug_Players();
-        Debug_Rooms();
     });
 
     _Socket.on("Change_PlayerName", function(_PlayerName) 
     {
-        Players[Player_.PlayerID].PlayerName = _PlayerName;
+        Players[_Socket.id].PlayerName = _PlayerName;
+
+        IO.emit("Update_Info", Players, Rooms);
+
+        Debug_Players();
     });
 
-    _Socket.on("Change_RoomName", function(_RoomName) 
+    _Socket.on("Change_PlayerState", function(_State) 
     {
-        var Index = Rooms[Player_.RoomName].Members.indexOf(Player_.PlayerID);
-        Rooms[Player_.RoomName].Members.splice(Index, 1);
+        Players[_Socket.id].State = _State;
 
-        if(Rooms[Player_.RoomName].Members.length == 0)
+        IO.emit("Update_Info", Players, Rooms);
+    });
+
+    _Socket.on("Change_RoomState", function(_State) 
+    {
+        for(var i1 in Rooms[Players[_Socket.id].RoomName].Players) 
         {
-            delete Rooms[Player_.RoomName];
+            Players[Rooms[Players[_Socket.id].RoomName].Players[i1]].State = _State;
         }
 
-        _Socket.leave(Player_.RoomName);
+        IO.to(Players[_Socket.id].RoomName).emit("Update_Info", Players, Rooms);
 
-        _Socket.join(_RoomName);
+        IO.to(Players[_Socket.id].RoomName).emit("Change_Show");
 
-        Players[Player_.PlayerID].RoomName = _RoomName;
+        IO.to(Players[_Socket.id].RoomName).emit("Change_State", _State);
+    });
 
+    _Socket.on("Change_Status", function(_SocketID, _Health, _Shield, _Ammo) 
+    {
+        Players[_SocketID].Health = _Health;
+        Players[_SocketID].Shield = _Shield;
+        Players[_SocketID].Ammo = _Ammo;
+
+        IO.emit("Update_Info", Players, Rooms);
+    });
+
+    _Socket.on("Change_Team", function(_Team) 
+    {
+        Players[_Socket.id].Team = _Team;
+
+        IO.emit("Update_Info", Players, Rooms);
+
+        IO.to(Players[_Socket.id].RoomName).emit("Change_Show");
+    });
+
+    _Socket.on("Change_Index", function(_Index) 
+    {
+        Players[_Socket.id].Index = _Index;
+
+        IO.emit("Update_Info", Players, Rooms);
+    });
+
+    _Socket.on("Change_Hand", function(_Hand) 
+    {
+        Players[_Socket.id].Hand = _Hand;
+
+        IO.emit("Update_Info", Players, Rooms);
+    });
+    
+    _Socket.on("Change_Order", function() 
+    {
+        Rooms[Players[_Socket.id].RoomName].Order = Rooms[Players[_Socket.id].RoomName].Players.slice();
+
+        IO.emit("Update_Info", Players, Rooms);
+    });
+
+    _Socket.on("Change_Side", function() 
+    {
+        Rooms[Players[_Socket.id].RoomName].Side = Rooms[Players[_Socket.id].RoomName].Side == "" || Rooms[Players[_Socket.id].RoomName].Side == "B" ? "A" : "B";
+
+        IO.emit("Update_Info", Players, Rooms);
+    });
+
+    _Socket.on("Change_Turn", function() 
+    {
+        Rooms[Players[_Socket.id].RoomName].Side = "A";
+
+        Rooms[Players[_Socket.id].RoomName].Turn = (Rooms[Players[_Socket.id].RoomName].Turn + 1) % Rooms[Players[_Socket.id].RoomName].Order.length
+        
+        Rooms[Players[_Socket.id].RoomName].Target = Rooms[Players[_Socket.id].RoomName].Turn;
+
+        IO.emit("Update_Info", Players, Rooms);
+    });
+
+    _Socket.on("Change_Target", function(_Target) 
+    {
+        Rooms[Players[_Socket.id].RoomName].Target = _Target;
+
+        IO.emit("Update_Info", Players, Rooms);
+    });
+
+    _Socket.on("Change_Value", function(_Value, _Type) 
+    {
+        Rooms[Players[_Socket.id].RoomName].Value = _Value;
+        Rooms[Players[_Socket.id].RoomName].Type = _Type;
+
+        IO.emit("Update_Info", Players, Rooms);
+    });
+
+    _Socket.on("Join_Room", function(_RoomName) 
+    {
         if(!(_RoomName in Rooms))
         {
             Rooms[_RoomName] = new Room();
             Rooms[_RoomName].RoomName = _RoomName;
-            Rooms[_RoomName].State = "Wait";
         }
 
-        Rooms[_RoomName].Members.push(Player_.PlayerID);
+        Rooms[_RoomName].Players.push(_Socket.id);
 
-        Debug_Players();
+        Players[_Socket.id].RoomName = _RoomName;
+
+        _Socket.join(_RoomName);
+
+        IO.emit("Update_Info", Players, Rooms);
+
+        IO.to(_RoomName).emit("Change_Show");
+
         Debug_Rooms();
     });
-
-    _Socket.on("Movement", function(_Movement) 
+    
+    _Socket.on("Leave_Room", function() 
     {
-        Player_.Movement = _Movement;
-    });
+        var RoomName = Players[_Socket.id].RoomName;
 
-    _Socket.on("Hand", function(_Hand) 
-    {
-        Player_.Hand = _Hand;
-    });
-
-    _Socket.on("Change_State", function(_RoomName, _State) 
-    {
-        if(_State == "Prepare")
+        if(RoomName in Rooms)
         {
-            if(Rooms[_RoomName].State == "Wait" && Rooms[_RoomName].Members.length >= 2)
+            Rooms[RoomName].Players.splice(Rooms[RoomName].Players.indexOf(_Socket.id), 1);
+            Rooms[RoomName].Order.splice(Rooms[RoomName].Order.indexOf(_Socket.id), 1);
+    
+            if(Rooms[RoomName].Order.length <= Rooms[RoomName].Turn)
             {
-                Rooms[_RoomName].Order = Get_ShuffledArray(Rooms[_RoomName].Members.slice());
-
-                Rooms[_RoomName].Turn = Rooms[_RoomName].Order[0];
-
-                Rooms[_RoomName].Type = "Attack";
-
-                Rooms[_RoomName].State = "Prepare";
-
-                IO.to(_RoomName).emit("Impulse", Players, Rooms);
+                Rooms[RoomName].Turn = Rooms[RoomName].Turn % Rooms[RoomName].Order.length;
             }
+
+            Rooms[RoomName].Target = Rooms[RoomName].Turn;
+
+            Players[_Socket.id].RoomName = "";
+
+            if(Rooms[RoomName].Players.length == 0)
+            {
+                delete Rooms[RoomName];
+            }
+
+            _Socket.leave(RoomName);
         }
-        else if(_State == "Play")
-        {
-            if(Rooms[_RoomName].State == "Prepare")
-            {
-                Rooms[_RoomName].State = "Play";
-                
-                IO.to(_RoomName).emit("Impulse", Players, Rooms);
-            }
-        }   
-    });
 
-    _Socket.on("Next_Turn", function(_RoomName, _Type) 
-    {
-        var Index = Rooms[_RoomName].Order.indexOf(Rooms[_RoomName].Turn);
+        IO.emit("Update_Info", Players, Rooms);
 
-        Rooms[_RoomName].Turn = Rooms[_RoomName].Order[(Index + 1) % Rooms[_RoomName].Members.length];
+        IO.to(RoomName).emit("Change_Show");
 
-        Rooms[_RoomName].Type = _Type;
-
-        IO.to(_RoomName).emit("Impulse", Players, Rooms);
+        Debug_Rooms();
     });
 
     _Socket.on("disconnect", function()
     {
-        var Index = Rooms[Player_.RoomName].Members.indexOf(Player_.PlayerID);
-        Rooms[Player_.RoomName].Members.splice(Index, 1);
+        var RoomName = Players[_Socket.id].RoomName;
 
-        if(Rooms[Player_.RoomName].Members.length == 0)
+        if(RoomName in Rooms)
         {
-            delete Rooms[Player_.RoomName];
-        }
+            Rooms[RoomName].Players.splice(Rooms[RoomName].Players.indexOf(_Socket.id), 1);
+            Rooms[RoomName].Order.splice(Rooms[RoomName].Order.indexOf(_Socket.id), 1);
 
-        delete Players[Player_.PlayerID];
-    });
-
-    function Debug_Players()
-    {
-        console.log("---------- Players ----------");
-        for(var i1 in Players) 
-        {
-            console.log(i1 + ": " + Players[i1].PlayerName);
-        }
-    }
-    function Debug_Rooms()
-    {
-        console.log("---------- Rooms ----------");
-        for(var i1 in Rooms) 
-        {
-            console.log(Rooms[i1].RoomName + ": ");
-
-            for(var i2 in Rooms[i1].Members)
+            if(Rooms[RoomName].Order.length <= Rooms[RoomName].Turn)
             {
-                console.log("  " + i2 + ": " + Players[Rooms[i1].Members[i2]].PlayerName);
+                Rooms[RoomName].Turn = Rooms[RoomName].Turn % Rooms[RoomName].Order.length;
             }
+
+            Rooms[RoomName].Target = Rooms[RoomName].Turn;
+    
+            Players[_Socket.id].RoomName = "";
+
+            if(Rooms[RoomName].Players.length == 0)
+            {
+                delete Rooms[RoomName];
+            }
+
+            _Socket.leave(RoomName);
         }
-    }
+
+        delete Players[_Socket.id];
+
+        IO.emit("Update_Info", Players, Rooms);
+
+        IO.to(RoomName).emit("Change_Show");
+
+        Debug_Rooms();
+    });
 });
 
-//1秒にFrameRate回呼ばれる関数
-setInterval(function() 
-{
-    for(var i1 in Players) 
-    {
-        if(Players[i1].Movement.forward)
-        {
-            Players[i1].Position.Y -= Players[i1].Speed;
-        }
-        if(Players[i1].Movement.back)
-        {
-            Players[i1].Position.Y += Players[i1].Speed;
-        }
-        if(Players[i1].Movement.right)
-        {
-            Players[i1].Position.X += Players[i1].Speed;
-        }
-        if(Players[i1].Movement.left)
-        {
-            Players[i1].Position.X -= Players[i1].Speed;
-        }
-
-        Players[i1].Position.X = Clamp_Value(Players[i1].Position.X, 0, Width_Window);
-        Players[i1].Position.Y = Clamp_Value(Players[i1].Position.Y, 0, Height_Window);
-    }
-
-    IO.emit("Update", Players, Rooms);
-
-}, 1000 / FrameRate);
-
-//publicファイルを提供する関数
 App.use("/public", Express.static(__dirname + "/public"));
 
 App.get("/", (_Request, _Response) => 
 {
-    //クライアントから要求があった時にPath.join(__dirname, "/public/index.html")へ飛ばす。
     _Response.sendFile(Path.join(__dirname, "/public/index.html"));
 });
 
-//サーバーの待ち受けを開始する関数
 Server.listen(Port, function() 
 {
-    console.log("Starting Server on port " + Port + ".");
+    console.log("[Port] " + Port);
 });
+
+function Debug_Players()
+{
+    console.log("---------- Players ----------");
+
+    for(var i1 in Players) 
+    {
+        console.log(Players[i1].PlayerName);
+    }
+
+    console.log("-----------------------------");
+}
+function Debug_Rooms()
+{
+    console.log("---------- Rooms ----------");
+
+    for(var i1 in Rooms) 
+    {
+        console.log("[RoomName] " + Rooms[i1].RoomName);
+
+        for(var i2 in Rooms[i1].Players)
+        {
+            console.log(Players[Rooms[i1].Players[i2]].PlayerName);
+        }
+    }
+    console.log("---------------------------");
+}
