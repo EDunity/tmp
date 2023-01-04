@@ -5,50 +5,237 @@
     <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
     <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <!-- <script type="text/javascript" src="http://localhost:PORTNUMBER/socket.io/socket.io.js"></script> -->
+    <!-- <script type="text/javascript" src="http://localhost:3000/socket.io/socket.io.js"></script> -->
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script type="text/javascript" src="/public/game.js"></script>
     <link type="text/css" rel="stylesheet" href="/public/style.css">
 </head>
 
 <body>
-    <div class="Title">
-        <h1>・tmp・</h1>
-        <p>2022/11/04</p>
+
+    <div id="Title">
+        <div class="Content1">
+
+            <div class="Content2">
+
+                <div class="Content3">
+                    <strong>
+                        <p class="Font1">Title</p>
+                    </strong>
+                </div>
+
+            </div>
+
+            <div class="Content4">
+
+                <div class="Relative">
+                    <div class="Absolute" style="margin-top:256px; margin-left:-128px;">
+                        <strong>
+                            <p class="Font2">Player Name</p>
+                        </strong>
+                        <input class="InputText" id="PlayerName" type="text" value="">
+                    </div>
+                </div>
+    
+                <div class="Relative">
+                    <div class="Absolute" style="margin-top:512px; margin-left:-128px;">
+                        <input class="InputButton3" type="button" value="Start" onclick="Change_PlayerName()">
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="Content6">
+
+                <div class="Content7">
+                </div>
+
+            </div>
+
+        </div>
     </div>
 
-    <hr>
+    <div id="GameMode">
+        <div class="Content1">
 
-    <div class="Content1" style="margin-top:32px;">
-        <div class="Content2" style="margin-top:16px;">
-            <strong>Name: </strong>
-            <input class="InputText" id="PlayerName" type="text" value="NoName" id="PlayerName">
-            <input class="Button" type="button" value="Change" onclick="Change_PlayerName()">
-        </div>
+            <div class="Content2">
 
-        <br>
+                <div class="Content3">
+                    <strong>
+                        <p class="Font1">Game Mode</p>
+                    </strong>
+                </div>
 
-        <div class="Content2" style="margin-top:16px;">
-            <strong>Room: </strong>
-            <!-- <input class="InputText" id="RoomName" type="text" value="Lobby" id="RoomName"> -->
-            <input class="InputText" id="RoomName" type="text" value="TestRoom" id="RoomName">
-            <input class="Button" type="button" value="Change" onclick="Change_RoomName()">
-        </div>
+            </div>
 
-        <br>
+            <div class="Content4">
 
-        <div class="Content2" style="margin-top:16px;">
-            <input class="Button" id="Visible" type="button" value="Start" onclick="Start_Game()">
+                <div class="Content5" style="margin-top:16px; margin-left:16px;">
+                    <input class="InputButton2" type="button" value="Private Battle" onclick="Change_State('JoinRoom')">
+                </div>
+                
+                <div class="Content5" style="margin-top:16px; margin-left:16px;">
+                    <input class="InputButton2" type="button" value="Public Battle" onclick="">
+                </div>
+                
+                <div class="Content5" style="margin-top:16px; margin-left:16px;">
+                    <input class="InputButton2" type="button" value="Practice" onclick="">
+                </div>
+
+            </div>
+
+            <div class="Content6">
+
+                <div class="Content7" style="margin-top:16px; margin-right:928px;">
+                    <input class="InputButton1" type="button" value="Back" onclick="Change_State('Title')">
+                </div>
+
+            </div>
+
         </div>
     </div>
 
-    <div class="Content1" style="margin-top:32px;">
-        <main class="Window">
-        </main>
+    <div id="JoinRoom">
+        <div class="Content1">
+
+            <div class="Content2">
+
+                <div class="Content3">
+                    <strong>
+                        <p class="Font1">Join Room</p>
+                    </strong>
+                </div>
+
+            </div>
+
+            <div class="Content4">
+
+                <div class="Relative">
+                    <div class="Absolute" style="margin-top:256px; margin-left:-128px;">
+                        <strong>
+                            <p class="Font2">Room Name</p>
+                        </strong>
+                        <input class="InputText" id="RoomName" type="text" value="">
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="Content6">
+
+                <div class="Content7" style="margin-top:16px; margin-right:432px;">
+                    <input class="InputButton1" type="button" value="Back" onclick="Change_State('GameMode')">
+                </div>
+                
+                <div class="Content7" style="margin-top:16px; margin-left:432px;">
+                    <input class="InputButton1" type="button" value="Join" onclick="Join_Room()">
+                </div>
+                
+            </div>
+
+        </div>
     </div>
 
-    <!-- <div class="Content1" style="margin-top:32px;">
-        <input class="Button" id="Visible" type="button" value="Start" onclick="Start_Game()">
-    </div> -->
+    <div id="Lobby">
+        <div class="Content1">
+
+            <div class="Content2">
+
+                <div class="Content3">
+                    <strong>
+                        <p class="Font1">Lobby</p>
+                    </strong>
+                </div>
+
+            </div>
+
+            <div class="Content4" id="Players">
+            </div>
+
+            <div class="Content6">
+
+                <div id="Leader">
+
+                    <!-- <div class="Content7" style="margin-top:16px; margin-right:432px;">
+                        <input class="InputButton1" type="button" value="Back" onclick="Leave_Room()">
+                    </div>
+
+                    <div class="Content7" style="margin-top:16px; margin-left:432px;">
+                        <input class="InputButton1" type="button" value="Start" onclick="Start_Battle()">
+                    </div> -->
+
+                    <div class="Content7" style="margin-top:16px; margin-right:360px;">
+                        <input class="InputButton1" type="button" value="Back" onclick="Leave_Room()">
+                    </div>
+
+                    <div class="Content7" style="margin-top:16px; margin-right:8px;">
+                        <input class="InputButton1" type="button" value="Red" onclick="Change_Team(this.value)">
+                    </div>  
+
+                    <div class="Content7" style="margin-top:16px; margin-left:8px;">
+                        <input class="InputButton1" type="button" value="Blue" onclick="Change_Team(this.value)">
+                    </div>  
+
+                    <div class="Content7" style="margin-top:16px; margin-left:360px;">
+                        <input class="InputButton1" type="button" value="Start" onclick="Start_Battle()">
+                    </div>
+
+                </div>
+
+                <div id="NotLeader">
+
+                    <!-- <div class="Content7" style="margin-top:16px; margin-right:928px;">
+                        <input class="InputButton1" type="button" value="Back" onclick="Leave_Room()">
+                    </div> -->
+
+                    <div class="Content7" style="margin-top:16px; margin-right:360px;">
+                        <input class="InputButton1" type="button" value="Back" onclick="Leave_Room()">
+                    </div>
+
+                    <div class="Content7" style="margin-top:16px; margin-right:8px;">
+                        <input class="InputButton1" type="button" value="Red" onclick="Change_Team(this.value)">
+                    </div>  
+
+                    <div class="Content7" style="margin-top:16px; margin-right:424px; margin-left:8px;">
+                        <input class="InputButton1" type="button" value="Blue" onclick="Change_Team(this.value)">
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <div id="Battle">
+        <div class="Content1">
+
+            <div class="Content2">
+
+                <div class="Content3">
+                    <strong>
+                        <p class="Font1">Battle</p>
+                    </strong>
+                </div>
+
+            </div>
+
+            <div class="Content4">
+                <main>
+                </main>
+            </div>
+
+            <div class="Content6">
+
+                <div class="Content7" style="margin-top:16px; margin-right:928px;">
+                    <input class="InputButton1" type="button" value="Give up" onclick="GiveUp_Battle()">
+                </div>
+
+            </div>
+
+        </div>
+    </div>
 
 </body>
 
