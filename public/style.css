@@ -1,0 +1,9 @@
+.Canvas
+{
+    position: absolute;
+}
+.Parent
+{
+    display:block;
+    text-align:center;
+}
